@@ -204,7 +204,7 @@ defmodule Antidote.Encode do
 
   escapes = :orddict.from_list(
     Enum.map(0..0x1F, &{&1, ?u}) ++
-    Enum.map([?\b, ?\t, ?\n, ?\f, ?\r, ?\", ?\\], &{&1, &1}))
+    Enum.map('\b\t\n\f\r\"\\', &{&1, &1}))
 
   make_escapes = fn size ->
     array = :array.from_orddict(escapes, 0)
@@ -216,11 +216,13 @@ defmodule Antidote.Encode do
   json_naive_escapes = make_escapes.(0x5C)
   json_strict_escapes = make_escapes.(0x7F)
 
-  for {byte, action} <- escapes do
+  for {action, byte} <- json_naive_escapes do
     case action do
       ?u ->
         sequence = to_string(:io_lib.format("\\u~4.16.0B", [byte]))
         defp escape(unquote(byte)), do: unquote(sequence)
+      0 ->
+        defp escape(unquote(byte)), do: throw(:bug)
       c ->
         sequence = <<?\\, c>>
         defp escape(unquote(byte)), do: unquote(sequence)
